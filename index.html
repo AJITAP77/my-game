@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multiplayer Drawing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { margin: 0; text-align: center; font-family: sans-serif; }
+        canvas { border: 2px solid black; background: white; touch-action: none; width: 90vw; height: 70vh; }
+    </style>
+</head>
+<body>
+    <h3>Draw with your fans!</h3>
+    <canvas id="canvas"></canvas>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        // Set drawing size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight * 0.7;
+
+        const draw = (x, y, isRemote) => {
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            if(!isRemote) socket.emit('drawing', {x, y});
+        };
+
+        const handleMove = (e) => {
+            if(!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            draw(x, y, false);
+        };
+
+        canvas.addEventListener('mousedown', () => drawing = true);
+        canvas.addEventListener('touchstart', (e) => { drawing = true; e.preventDefault(); });
+        window.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
+        window.addEventListener('touchend', () => { drawing = false; ctx.beginPath(); });
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('touchmove', handleMove);
+
+        // Receive drawing from others
+        socket.on('drawing', (data) => draw(data.x, data.y, true));
+    </script>
+</body>
+</html>
